@@ -24,7 +24,7 @@ python -m spacy download en_core_web_sm
 
 ## ⚠️ Issues & Fixes
 
-❌ Error: ValueError: numpy.dtype size changed, may indicate binary incompatibility
+❌ Error: ValueError: numpy.dtype size changed, may indicate binary incompatibility  
 This happens when numpy, h5py, and spaCy versions don’t match.
 
 ✅ Fix
