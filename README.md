@@ -39,6 +39,6 @@ python -m spacy download en_core_web_sm
 
 ## 🔮 Future Improvements
 
--> Support multiple category matches per task
--> Add ML-based classifier for smarter tagging
--> Integrate with a simple Flask/Streamlit web app
+-> Support multiple category matches per task  
+-> Add ML-based classifier for smarter tagging  
+-> Integrate with a simple Flask/Streamlit web app  
