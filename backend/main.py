@@ -1,3 +1,4 @@
+from logging import Logger
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -23,24 +24,19 @@ app.add_middleware(
 
 # Load spaCy's small English model (includes tokenizer, POS tagger, lemmatizer, etc.)
 def load_spacy_model():
-    """Load spaCy model with proper error handling"""
+    """
+    Load spaCy model with safe fallbacks:
+    1. Try to load en_core_web_sm (works if installed via pip/requirements.txt).
+    2. Try a blank English pipeline (tokenizer only).
+    """
     try:
         return spacy.load("en_core_web_sm")
     except OSError:
-        print("spaCy model not found. Downloading...")
-        try:
-            import subprocess
-            import sys
-            # Download the model
-            subprocess.check_call([
-                sys.executable, "-m", "spacy", "download", "en_core_web_sm"
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("Model downloaded successfully!")
-            return spacy.load("en_core_web_sm")
-        except Exception as e:
-            print(f"Failed to download spaCy model: {e}")
-            # Fallback: create a simple tokenizer
-            return None
+        Logger.info("⚠ spaCy model 'en_core_web_sm' not installed. Using blank English instead.")
+        return spacy.blank("en")
+    except Exception as e:
+        Logger.error(f"Unexpected spaCy error: {e}")
+        return None
 
 nlp = load_spacy_model()
 
@@ -71,32 +67,22 @@ class HealthResponse(BaseModel):
     message: str
 
 def auto_tag(task: str) -> str:
-    """
-    Assign a simple category tag to a task description.
-    Uses keyword matching with spaCy lemmatization 
-    (so 'buying' matches 'buy', 'ran' matches 'run', etc.)
-    """
-    if nlp is None:
-        # Fallback: simple keyword matching without lemmatization
+    if not nlp or "lemmatizer" not in nlp.pipe_names:
+        # fallback: keyword-only matching
         task_lower = task.lower()
         for category, keywords in CATEGORIES.items():
             for keyword in keywords:
                 if keyword in task_lower:
                     return category
         return "Other"
-    
-    # Convert text to spaCy Doc (tokenized + lemmatized)
+
     doc = nlp(task.lower())
-    
-    # Check each token in the task
     for token in doc:
-        # See if the lemmatized form matches any category keywords
         for category, keywords in CATEGORIES.items():
             if token.lemma_ in keywords:
-                return category  # Return first matching category
-    
-    # If no keyword matched, fallback to "Other"
+                return category
     return "Other"
+
 
 # API Endpoints
 @app.get("/", response_model=HealthResponse)
