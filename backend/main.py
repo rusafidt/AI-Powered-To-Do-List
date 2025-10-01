@@ -115,6 +115,14 @@ async def health_check():
         message="API is running successfully"
     )
 
+@app.get("/healthz")
+async def healthz():
+    """Render health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        message="API is running successfully"
+    )
+
 @app.post("/tag-task", response_model=TaskResponse)
 async def tag_single_task(request: TaskRequest):
     """
