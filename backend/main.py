@@ -22,15 +22,27 @@ app.add_middleware(
 )
 
 # Load spaCy's small English model (includes tokenizer, POS tagger, lemmatizer, etc.)
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    # Fallback for deployment environments
-    import subprocess
-    import sys
-    print("Downloading spaCy model...")
-    subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
+def load_spacy_model():
+    """Load spaCy model with proper error handling"""
+    try:
+        return spacy.load("en_core_web_sm")
+    except OSError:
+        print("spaCy model not found. Downloading...")
+        try:
+            import subprocess
+            import sys
+            # Download the model
+            subprocess.check_call([
+                sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("Model downloaded successfully!")
+            return spacy.load("en_core_web_sm")
+        except Exception as e:
+            print(f"Failed to download spaCy model: {e}")
+            # Fallback: create a simple tokenizer
+            return None
+
+nlp = load_spacy_model()
 
 # Define categories and the keywords that hint at them
 CATEGORIES = {
@@ -64,6 +76,15 @@ def auto_tag(task: str) -> str:
     Uses keyword matching with spaCy lemmatization 
     (so 'buying' matches 'buy', 'ran' matches 'run', etc.)
     """
+    if nlp is None:
+        # Fallback: simple keyword matching without lemmatization
+        task_lower = task.lower()
+        for category, keywords in CATEGORIES.items():
+            for keyword in keywords:
+                if keyword in task_lower:
+                    return category
+        return "Other"
+    
     # Convert text to spaCy Doc (tokenized + lemmatized)
     doc = nlp(task.lower())
     
